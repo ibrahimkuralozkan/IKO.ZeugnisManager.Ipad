@@ -2,6 +2,55 @@
     <div class="container-fluid"><a class="navbar-brand" href="">Zeugnis Manager</a><button title="Menü" class="navbar-toggler" @onclick="ToggleNavMenu"><span class="navbar-toggler-icon"></span></button></div>
 </div>
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column"><div class="nav-item px-3"><NavLink class="nav-link" href="" Match="NavLinkMatch.All"><span class="bi bi-file-earmark-lock-fill-nav-menu" aria-hidden="true"></span> Lehrerpaket</NavLink></div><div class="nav-item px-3"><NavLink class="nav-link" href="admin"><span class="bi bi-shield-lock-fill" aria-hidden="true"></span> Mobiler Admin</NavLink></div></nav>
+    <nav class="nav flex-column">
+        <div class="nav-item px-3"><NavLink class="nav-link" href="" Match="NavLinkMatch.All"><span class="bi bi-file-earmark-lock-fill-nav-menu" aria-hidden="true"></span> Lehrerpaket</NavLink></div>
+        @if (showVerwaltung)
+        {
+            <div class="nav-item px-3"><NavLink class="nav-link" href="admin"><span class="bi bi-shield-lock-fill" aria-hidden="true"></span> Verwaltung</NavLink></div>
+        }
+    </nav>
 </div>
-@code { private bool collapseNavMenu = true; private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null; private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu; }
+
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@code {
+    // Teachers only see "Lehrerpaket". The Verwaltung link appears on a device once
+    // /admin has been opened there directly (e.g. via bookmark) and is remembered locally.
+    private const string StorageKey = "zm.verwaltungDevice";
+    private bool collapseNavMenu = true, showVerwaltung;
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (IsVerwaltungPage()) await RememberDevice();
+        else
+        {
+            try { showVerwaltung = await JS.InvokeAsync<string?>("localStorage.getItem", StorageKey) == "1"; }
+            catch (JSException) { showVerwaltung = false; }
+        }
+        StateHasChanged();
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (!showVerwaltung && IsVerwaltungPage()) { await RememberDevice(); StateHasChanged(); }
+    }
+
+    private bool IsVerwaltungPage() =>
+        Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].TrimEnd('/').Equals("admin", StringComparison.OrdinalIgnoreCase);
+
+    private async Task RememberDevice()
+    {
+        showVerwaltung = true;
+        try { await JS.InvokeVoidAsync("localStorage.setItem", StorageKey, "1"); }
+        catch (JSException) { }
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}

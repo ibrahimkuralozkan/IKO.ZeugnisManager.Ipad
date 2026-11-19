@@ -267,3 +267,24 @@ Ev bilgisayarındaki yerel konum: `C:\Users\ibrah\source\repos\IKO.ZeugnisManage
 - Geliştirme ortamındaki `service-worker.js` önbellek kullanmadığı için bildirim yalnız publish edilmiş sürümde görülür.
 - Not: `index.html` `lib/bootstrap/...` dosyasına bağlanıyor ama repoda `wwwroot/lib` yok; Bootstrap sınıfları çalışmıyor. Güncelleme bildirimi ve zaman aşımı uyarısı bu yüzden `wwwroot/css/app.css` içinde kendi stilleriyle tanımlandı.
 - Doğrulama (yerel publish + Node statik sunucu, yapay veri yok): 0.5.3 ilk kurulumda bildirim yok; sahte 0.5.4 yayınında bildirim çıktı, yeni worker `waiting` kaldı; dosya açıkken ek uyarı göründü; `Jetzt aktualisieren` sonrası 0.5.4 yüklendi ve eski önbellek silindi. Geçiş testi: 0.5.2'den 0.5.3'e worker kendiliğinden etkinleşti, açık sayfa zorla yenilenmedi, sonraki açılış 0.5.3 oldu. Release build 0 hata, 7/7 test.
+
+## 14. v0.5.4 — Yeni çalışma düzeni ve "Verwaltung" (19.11.2026, ev bilgisayarı)
+
+Kullanıcıyla kararlaştırılan çalışma düzeni (hafta sonu/tatilde evden çalışma ihtiyacı nedeniyle):
+
+- Günlük yönetici işi okulda da evde de yalnız PWA `/admin` sayfasında yapılır: LOGINEO'daki en yeni `.zmadm` açılır, iş yapılır, yeni revizyon LOGINEO'ya kaydedilir, eskisi silinir.
+- Okul bilgisayarındaki Admin yalnız dönemde iki kez kullanılır: başta ilk `.zmadm` dosyasını oluşturmak (`/mobiladmin`), sonda son dosyayı merkezi verilere aktarmak.
+- Okul Admin'indeki `/pakete` ve `/pilot` silinmedi; yedek olarak duruyor.
+- Ayrı ev Admin kurulumu reddedildi: yetki/replay kayıtları bilgisayara yerel olduğu için iki Admin birbirinin paketlerini kabul etmez.
+
+v0.5.4 değişiklikleri:
+
+- PWA'da `Mobiler Admin` adı `Verwaltung` oldu (menü, sayfa başlığı).
+- `Verwaltung` bağlantısı öğretmen menüsünde görünmez. Bir cihazda `/admin` doğrudan açıldığında `localStorage` anahtarı `zm.verwaltungDevice` kaydedilir ve o cihazda bağlantı görünür olur. Bu bir erişim kontrolü değildir, yalnız menü sadeleştirmesidir; güvenlik `.zmadm` parolasına dayanır.
+- Kod: `ZeugnisManager.Teacher/Layout/NavMenu.razor`, `Pages/PortableAdmin.razor`.
+
+Açık konular:
+
+- `/admin` sayfasındaki metin hâlâ "Nur dienstliches Gerät" diyor; özel ev bilgisayarında kullanım için okul yönetiminin onayı kullanıcıya bırakıldı.
+- Okul Admin menüsünde sayfa adı hâlâ `Mobiler Admin` (`/mobiladmin`); yeni düzende "Verwaltungsdatei" gibi bir adla sadeleştirilebilir.
+- Önerilen sonraki iyileştirme: kaydederken "eski dosyayı LOGINEO'dan silin" hatırlatması.
