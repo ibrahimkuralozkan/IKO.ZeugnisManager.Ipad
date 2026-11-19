@@ -58,6 +58,7 @@
         <div class="save-bar"><button class="btn btn-success btn-lg" @onclick="SaveResult">Verschlüsseltes Rückgabepaket erstellen</button><button class="btn btn-outline-secondary" @onclick="ClosePackage">Paket schließen</button></div>
     }
     @if (!string.IsNullOrWhiteSpace(message)) { <div class="alert @(isError ? "alert-danger" : "alert-success") mt-3">@message</div> }
+    <p class="app-version">Version 2026.11.19.2 · Web Crypto</p>
 </div>
 
 @code {
