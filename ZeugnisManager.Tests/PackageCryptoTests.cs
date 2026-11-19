@@ -27,6 +27,20 @@ public sealed class PackageCryptoTests
         Assert.Throws<PackageSecurityException>(() => PackageCrypto.Decrypt(bytes, Password));
     }
 
+    [Fact]
+    public void ResultPackage_ReferencesOriginalAssignment()
+    {
+        var assignment = CreatePackage();
+        var originalId = assignment.PackageId;
+        var resultBytes = PackageResultFactory.Create(assignment, Password).Bytes;
+        var result = PackageCrypto.Decrypt(resultBytes, Password);
+        Assert.Equal(ExchangePackageKind.Result, result.Kind);
+        Assert.Equal(originalId, result.SourcePackageId);
+        Assert.NotEqual(originalId, result.PackageId);
+        Assert.Equal(ExchangePackageKind.Assignment, assignment.Kind);
+        Assert.Equal(originalId, assignment.PackageId);
+    }
+
     private static ExchangePackageDocument CreatePackage() => new()
     {
         TeacherName = "Testlehrkraft", ClassName = "4a", ScopeId = "sport", ScopeLabel = "Sport", SchoolYear = "2026/2027", HalfYear = 1,

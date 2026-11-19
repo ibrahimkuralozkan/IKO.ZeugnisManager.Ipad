@@ -1,0 +1,59 @@
+@page "/pilot"
+@using IKO.ZeugnisManager.Core
+@using ZeugnisManager.Admin.Services
+@inject PilotPackageService Packages
+@inject IJSRuntime JS
+
+<PageTitle>Pilottest – Zeugnis Manager</PageTitle>
+
+<h1>iPad-Pilottest</h1>
+<p>Bu ekran yalnızca iki yapay deneme öğrencisi kullanır. Gerçek öğrenci verisi içermez.</p>
+
+<div class="row g-4">
+    <div class="col-lg-6"><section class="card p-4 h-100">
+        <h2 class="h4">1. Arbeitsauftrag erstellen</h2>
+        <label class="form-label">Testlehrkraft<input class="form-control" @bind="teacherName" /></label>
+        <label class="form-label">Paketkennwort (mindestens 12 Zeichen)<input class="form-control" type="password" @bind="password" /></label>
+        <button class="btn btn-primary mt-3" @onclick="CreatePackage">Verschlüsseltes Pilotpaket herunterladen</button>
+    </section></div>
+
+    <div class="col-lg-6"><section class="card p-4 h-100">
+        <h2 class="h4">2. Rückgabepaket prüfen</h2>
+        <label class="form-label">Rückgabepaket (.zmpkg)<InputFile class="form-control" accept=".zmpkg" OnChange="SelectResult" /></label>
+        <label class="form-label">Dasselbe Paketkennwort<input class="form-control" type="password" @bind="importPassword" /></label>
+        <button class="btn btn-success mt-3" disabled="@(resultBytes is null)" @onclick="ImportResult">Rückgabepaket prüfen</button>
+    </section></div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(message)) { <div class="alert @(isError ? "alert-danger" : "alert-success") mt-4">@message</div> }
+
+@if (result is not null)
+{
+    <section class="card p-4 mt-4"><h2 class="h4">Geprüfte Ergebnisse</h2>
+        <p><strong>Lehrkraft:</strong> @result.TeacherName &nbsp; <strong>Bereich:</strong> @result.ScopeLabel</p>
+        @foreach (var student in result.Students)
+        {
+            <div class="border rounded p-3 mb-3"><h3 class="h5">@student.FirstName @student.LastName</h3>
+                @foreach (var ratingSection in student.RatingSections)
+                {
+                    <ul>@foreach (var criterion in ratingSection.Criteria)
+                    {
+                        var value = student.Ratings.TryGetValue(ratingSection.RatingKey, out var values) && values.TryGetValue(criterion.Id, out var rating) ? rating.ToString() : "—";
+                        <li><strong>@value</strong> – @criterion.Text</li>
+                    }</ul>
+                }
+                @foreach (var text in student.Texts) { <p><strong>Bemerkung:</strong> @(string.IsNullOrWhiteSpace(text.Value) ? "—" : text.Value)</p> }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private string teacherName = "Pilot-Lehrkraft"; private string password = ""; private string importPassword = "";
+    private byte[]? resultBytes; private ExchangePackageDocument? result; private string? message; private bool isError;
+    private async Task CreatePackage() { Reset(); try { var created = Packages.Create(teacherName, password); await JS.InvokeVoidAsync("downloadFileFromBytes", created.FileName, Convert.ToBase64String(created.Bytes), "application/octet-stream"); message = "Pilotpaket erstellt. Bitte über LOGINEO an das iPad senden."; } catch (Exception ex) { Fail(ex.Message); } }
+    private async Task SelectResult(InputFileChangeEventArgs e) { Reset(); try { await using var stream = e.File.OpenReadStream(20 * 1024 * 1024); using var memory = new MemoryStream(); await stream.CopyToAsync(memory); resultBytes = memory.ToArray(); message = $"Datei ausgewählt: {e.File.Name}"; } catch (Exception ex) { Fail(ex.Message); } }
+    private void ImportResult() { Reset(false); try { if (resultBytes is null) throw new InvalidOperationException("Bitte ein Rückgabepaket auswählen."); result = Packages.Import(resultBytes, importPassword); message = "Rückgabepaket erfolgreich entschlüsselt und geprüft."; } catch (Exception ex) { Fail(ex.Message); } }
+    private void Reset(bool clearResult = true) { message = null; isError = false; if (clearResult) result = null; }
+    private void Fail(string text) { message = text; isError = true; }
+}

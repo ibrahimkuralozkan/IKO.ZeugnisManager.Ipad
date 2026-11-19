@@ -7,6 +7,7 @@ public static class PackageResultFactory
         if (assignment.Kind != ExchangePackageKind.Assignment)
             throw new PackageSecurityException("Nur ein Arbeitsauftrag kann als Rückgabepaket gespeichert werden.");
         var sourceId = assignment.PackageId;
+        var originalCreatedUtc = assignment.CreatedUtc;
         assignment.Kind = ExchangePackageKind.Result;
         assignment.SourcePackageId = sourceId;
         assignment.PackageId = Guid.NewGuid();
@@ -22,6 +23,7 @@ public static class PackageResultFactory
             assignment.PackageId = sourceId;
             assignment.Kind = ExchangePackageKind.Assignment;
             assignment.SourcePackageId = null;
+            assignment.CreatedUtc = originalCreatedUtc;
         }
     }
 
