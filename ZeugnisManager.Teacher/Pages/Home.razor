@@ -1,0 +1,71 @@
+@page "/"
+@using IKO.ZeugnisManager.Core
+@inject IJSRuntime JS
+
+<PageTitle>Zeugnis Manager – Lehrerpaket</PageTitle>
+
+<div class="teacher-package-page">
+    <h1>Zeugnis Manager</h1>
+    <p class="privacy-note"><strong>Datenschutzhinweis:</strong> Bearbeiten Sie ausschließlich das bereitgestellte verschlüsselte Paket. Speichern oder übertragen Sie keine unverschlüsselten Zeugnisse auf privaten Geräten. Senden Sie das Rückgabepaket nur über den von der Schule freigegebenen Weg.</p>
+    @if (package is null)
+    {
+        <section class="teacher-package-card open-card">
+            <h2>Verschlüsselten Arbeitsauftrag öffnen</h2>
+            <label>Arbeitsauftrag (.zmpkg)<InputFile class="form-control" OnChange="FileSelected" accept=".zmpkg" /></label>
+            <label>Paketkennwort<input class="form-control" type="password" autocomplete="current-password" @bind="password" /></label>
+            <button class="btn btn-primary" @onclick="OpenPackage" disabled="@(bytes is null)">Arbeitsauftrag öffnen</button>
+        </section>
+    }
+    else
+    {
+        <section class="package-header">
+            <div><span>Lehrkraft</span><strong>@package.TeacherName</strong></div><div><span>Klasse</span><strong>@package.ClassName</strong></div>
+            <div><span>Bereich</span><strong>@package.ScopeLabel</strong></div><div><span>Gültig bis</span><strong>@package.ExpiresUtc.ToLocalTime().ToString("dd.MM.yyyy")</strong></div>
+        </section>
+        @foreach (var student in package.Students)
+        {
+            <section class="teacher-package-card student-card">
+                <h2>@student.FirstName @student.LastName</h2>
+                @foreach (var ratingSection in student.RatingSections)
+                {
+                    <h3>@ratingSection.Title</h3>
+                    <div class="rating-scroll"><table class="rating-editor">
+                        <thead><tr><th>Kriterium</th>@for (var value = 1; value <= 5; value++) { <th>@value</th> }</tr></thead>
+                        <tbody>@foreach (var criterion in ratingSection.Criteria)
+                        {
+                            <tr><td>… @criterion.Text</td>@for (var value = 1; value <= 5; value++)
+                            {
+                                var selected = value;
+                                <td><input type="radio" name="@($"{student.StudentId:N}_{ratingSection.RatingKey}_{criterion.Id}")" checked="@(GetRating(student, ratingSection.RatingKey, criterion.Id) == selected)" @onchange="() => SetRating(student, ratingSection.RatingKey, criterion.Id, selected)" /></td>
+                            }</tr>
+                        }</tbody>
+                    </table></div>
+                }
+                @foreach (var key in package.AllowedSelectionKeys)
+                {
+                    <label class="grade-field">@package.ScopeLabel<select class="form-select" value="@GetSelection(student, key)" @onchange="e => student.Selections[key] = e.Value?.ToString() ?? string.Empty">
+                        <option value="">— bitte wählen —</option><option value="s. Anlage">s. Anlage</option><option value="1">1 – sehr gut</option><option value="2">2 – gut</option><option value="3">3 – befriedigend</option><option value="4">4 – ausreichend</option><option value="5">5 – mangelhaft</option><option value="6">6 – ungenügend</option>
+                    </select></label>
+                }
+                @foreach (var key in package.AllowedTextKeys)
+                {
+                    <label class="text-field">Bemerkung<textarea class="form-control" rows="3" value="@GetText(student, key)" @onchange="e => student.Texts[key] = e.Value?.ToString() ?? string.Empty"></textarea></label>
+                }
+            </section>
+        }
+        <div class="save-bar"><button class="btn btn-success btn-lg" @onclick="SaveResult">Verschlüsseltes Rückgabepaket erstellen</button><button class="btn btn-outline-secondary" @onclick="ClosePackage">Paket schließen</button></div>
+    }
+    @if (!string.IsNullOrWhiteSpace(message)) { <div class="alert @(isError ? "alert-danger" : "alert-success") mt-3">@message</div> }
+</div>
+
+@code {
+    private byte[]? bytes; private string password = ""; private ExchangePackageDocument? package; private string? message; private bool isError;
+    private async Task FileSelected(InputFileChangeEventArgs e) { package = null; ResetMessage(); try { await using var stream = e.File.OpenReadStream(20 * 1024 * 1024); using var memory = new MemoryStream(); await stream.CopyToAsync(memory); bytes = memory.ToArray(); message = $"Datei ausgewählt: {e.File.Name}"; } catch (Exception ex) { Fail(ex.Message); } }
+    private void OpenPackage() { ResetMessage(); try { if (bytes is null) throw new InvalidOperationException("Bitte ein Paket auswählen."); package = PackageCrypto.Decrypt(bytes, password); if (package.Kind != ExchangePackageKind.Assignment) throw new PackageSecurityException("Bitte einen Arbeitsauftrag öffnen."); message = $"Arbeitsauftrag geöffnet: {package.Students.Count} Schüler."; } catch (Exception ex) { package = null; Fail(ex.Message); } }
+    private async Task SaveResult() { ResetMessage(); try { if (package is null) return; var result = PackageResultFactory.Create(package, password); await JS.InvokeVoidAsync("downloadFileFromBytes", result.FileName, Convert.ToBase64String(result.Bytes), "application/octet-stream"); message = "Das verschlüsselte Rückgabepaket wurde erstellt. Bitte über den von der Schule freigegebenen Weg zurücksenden."; } catch (Exception ex) { Fail(ex.Message); } }
+    private static int GetRating(ExchangeStudentRecord student, string key, string id) => student.Ratings.TryGetValue(key, out var values) && values.TryGetValue(id, out var value) ? value : 0;
+    private static void SetRating(ExchangeStudentRecord student, string key, string id, int value) { if (!student.Ratings.TryGetValue(key, out var values)) student.Ratings[key] = values = new(); values[id] = value; }
+    private static string GetSelection(ExchangeStudentRecord student, string key) => student.Selections.TryGetValue(key, out var value) ? value : "";
+    private static string GetText(ExchangeStudentRecord student, string key) => student.Texts.TryGetValue(key, out var value) ? value : "";
+    private void ClosePackage() { package = null; bytes = null; password = ""; ResetMessage(); } private void ResetMessage() { message = null; isError = false; } private void Fail(string text) { message = text; isError = true; }
+}
