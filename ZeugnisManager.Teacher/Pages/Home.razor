@@ -1,6 +1,8 @@
 @page "/"
 @using IKO.ZeugnisManager.Core
+@using ZeugnisManager.Teacher.Services
 @inject IJSRuntime JS
+@inject BrowserPackageCrypto Crypto
 
 <PageTitle>Zeugnis Manager – Lehrerpaket</PageTitle>
 
@@ -61,8 +63,8 @@
 @code {
     private byte[]? bytes; private string password = ""; private ExchangePackageDocument? package; private string? message; private bool isError;
     private async Task FileSelected(InputFileChangeEventArgs e) { package = null; ResetMessage(); try { await using var stream = e.File.OpenReadStream(20 * 1024 * 1024); using var memory = new MemoryStream(); await stream.CopyToAsync(memory); bytes = memory.ToArray(); message = $"Datei ausgewählt: {e.File.Name}"; } catch (Exception ex) { Fail(ex.Message); } }
-    private void OpenPackage() { ResetMessage(); try { if (bytes is null) throw new InvalidOperationException("Bitte ein Paket auswählen."); package = PackageCrypto.Decrypt(bytes, password); if (package.Kind != ExchangePackageKind.Assignment) throw new PackageSecurityException("Bitte einen Arbeitsauftrag öffnen."); message = $"Arbeitsauftrag geöffnet: {package.Students.Count} Schüler."; } catch (Exception ex) { package = null; Fail(ex.Message); } }
-    private async Task SaveResult() { ResetMessage(); try { if (package is null) return; var result = PackageResultFactory.Create(package, password); await JS.InvokeVoidAsync("downloadFileFromBytes", result.FileName, Convert.ToBase64String(result.Bytes), "application/octet-stream"); message = "Das verschlüsselte Rückgabepaket wurde erstellt. Bitte über den von der Schule freigegebenen Weg zurücksenden."; } catch (Exception ex) { Fail(ex.Message); } }
+    private async Task OpenPackage() { ResetMessage(); try { if (bytes is null) throw new InvalidOperationException("Bitte ein Paket auswählen."); package = await Crypto.DecryptAsync(bytes, password); if (package.Kind != ExchangePackageKind.Assignment) throw new PackageSecurityException("Bitte einen Arbeitsauftrag öffnen."); message = $"Arbeitsauftrag geöffnet: {package.Students.Count} Schüler."; } catch (Exception ex) { package = null; Fail(ex.Message); } }
+    private async Task SaveResult() { ResetMessage(); try { if (package is null) return; var result = await Crypto.CreateResultAsync(package, password); await JS.InvokeVoidAsync("downloadFileFromBytes", result.FileName, Convert.ToBase64String(result.Bytes), "application/octet-stream"); message = "Das verschlüsselte Rückgabepaket wurde erstellt. Bitte über den von der Schule freigegebenen Weg zurücksenden."; } catch (Exception ex) { Fail(ex.Message); } }
     private static int GetRating(ExchangeStudentRecord student, string key, string id) => student.Ratings.TryGetValue(key, out var values) && values.TryGetValue(id, out var value) ? value : 0;
     private static void SetRating(ExchangeStudentRecord student, string key, string id, int value) { if (!student.Ratings.TryGetValue(key, out var values)) student.Ratings[key] = values = new(); values[id] = value; }
     private static string GetSelection(ExchangeStudentRecord student, string key) => student.Selections.TryGetValue(key, out var value) ? value : "";
