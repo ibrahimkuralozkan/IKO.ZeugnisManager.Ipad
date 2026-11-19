@@ -20,6 +20,10 @@ dotnet run --project ZeugnisManager.Teacher
 
 PWA tarayıcıdan ana ekrana kurulabilir. MAUI veya sistem çapında bir runtime kurulumu gerekmez.
 
+## Sürümleme
+
+Tüm projelerin ortak sürümü kökteki `Directory.Build.props` dosyasında tutulur. Her işlevsel değişiklikte semantik sürüm (`MAJOR.MINOR.PATCH`) güncellenir. Teacher ve Admin arayüzleri sürümü doğrudan Core assembly bilgisinden gösterir.
+
 ## Otomatik PWA yayını
 
 `main` dalında Teacher veya Core değiştiğinde GitHub Actions uygulamayı otomatik olarak GitHub Pages'e yayınlar:

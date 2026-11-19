@@ -187,6 +187,7 @@ Pilot başarıyla tamamlandıktan sonra:
 - Eski Web reposunu çalışan yedek olarak koru.
 - Geri döndürülemez Git işlemleri (`reset --hard`, history rewrite, force push) kullanma.
 - GitHub Pages workflow sonucunu push sonrasında kontrol et.
+- Her işlevsel değişiklikte kökteki `Directory.Build.props` sürümünü semantik olarak artır; Teacher ve Admin aynı merkezi sürümü kullanır.
 - Güvenlik veya Datenschutz için kesin hukuki garanti verme; teknik önlemleri açıkça ayır.
 - İletişim dili kullanıcıyla Türkçe, uygulama arayüzü öğretmenler için Almancadır.
 

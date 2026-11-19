@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddSingleton<ZeugnisManager.Admin.Services.PilotPackageService>();
+builder.Services.AddSingleton<ZeugnisManager.Admin.Services.LegacyDataSourceService>();
 
 var app = builder.Build();
 

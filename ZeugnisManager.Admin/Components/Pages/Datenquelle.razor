@@ -1,0 +1,46 @@
+@page "/datenquelle"
+@using ZeugnisManager.Admin.Services
+@inject LegacyDataSourceService DataSource
+
+<PageTitle>Datenquelle – Zeugnis Manager</PageTitle>
+
+<h1>Lokale Datenquelle</h1>
+<p>Yeni Admin uygulaması öğrenci verilerini kopyalamadan eski çalışan uygulamanın yerel <code>AppData</code> klasörünü okur. Bu yol ve veriler GitHub'a gönderilmez.</p>
+
+<section class="card p-4 mb-4">
+    <label class="form-label">Pfad zur alten ZeugnisManager-Web-Anwendung
+        <input class="form-control" @bind="rootPath" />
+    </label>
+    <div class="mt-3 d-flex gap-2 flex-wrap">
+        <button class="btn btn-primary" @onclick="Connect">Prüfen und lokal verbinden</button>
+        <button class="btn btn-outline-secondary" @onclick="InspectOnly">Nur prüfen</button>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(message)) { <div class="alert @(isError ? "alert-danger" : "alert-success")">@message</div> }
+
+@if (snapshot is not null)
+{
+    <section class="card p-4">
+        <h2 class="h4">Verbindungsübersicht</h2>
+        <dl class="row">
+            <dt class="col-sm-3">Schuljahr</dt><dd class="col-sm-9">@snapshot.SchoolYear</dd>
+            <dt class="col-sm-3">Halbjahr</dt><dd class="col-sm-9">@snapshot.HalfYear. Halbjahr</dd>
+            <dt class="col-sm-3">Lehrkräfte</dt><dd class="col-sm-9">@snapshot.TeacherCount</dd>
+            <dt class="col-sm-3">Katalogdateien</dt><dd class="col-sm-9">@snapshot.CatalogCount</dd>
+        </dl>
+        <div class="table-responsive"><table class="table table-striped align-middle">
+            <thead><tr><th>Klasse</th><th>Gesamt</th><th>Normal</th><th>SE</th><th>Förder</th></tr></thead>
+            <tbody>@foreach (var item in snapshot.Classes)
+            { <tr><td><strong>@item.ClassName</strong></td><td>@item.StudentCount</td><td>@item.NormalCount</td><td>@item.SeCount</td><td>@item.FoerderCount</td></tr> }</tbody>
+        </table></div>
+    </section>
+}
+
+@code {
+    private string rootPath = ""; private DataSourceSnapshot? snapshot; private string? message; private bool isError;
+    protected override void OnInitialized() { rootPath = DataSource.GetConfiguredPath(); Inspect(false); }
+    private void Connect() => Inspect(true);
+    private void InspectOnly() => Inspect(false);
+    private void Inspect(bool save) { message = null; isError = false; try { snapshot = DataSource.Inspect(rootPath, save); message = save ? "Datenquelle wurde lokal verbunden." : "Datenquelle ist gültig."; } catch (Exception ex) { snapshot = null; message = ex.Message; isError = true; } }
+}
