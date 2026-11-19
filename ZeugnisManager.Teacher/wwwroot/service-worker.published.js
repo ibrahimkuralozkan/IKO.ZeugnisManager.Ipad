@@ -38,6 +38,11 @@ async function onActivate(event) {
         .filter(key => key.startsWith(cacheNamePrefix) && key !== cacheName)
         .map(key => caches.delete(key)));
     await self.clients.claim();
+
+    // Existing installed PWA windows may still be executing the previous app
+    // bundle. Reload each controlled window once when this new worker activates.
+    const windowClients = await self.clients.matchAll({ type: 'window' });
+    await Promise.all(windowClients.map(client => client.navigate(client.url)));
 }
 
 async function onFetch(event) {
