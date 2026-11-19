@@ -30,5 +30,5 @@ window.zmSessionTimeout = (() => {
         reference = null; warned = false; timer = null;
     }
 
-    return { start, stop, touch };
+    return { start, stop, touch, isActive: () => reference !== null };
 })();

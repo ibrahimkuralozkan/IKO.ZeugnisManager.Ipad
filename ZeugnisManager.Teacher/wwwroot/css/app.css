@@ -112,8 +112,73 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+/* Banners rendered by the layout (no Bootstrap is bundled, so they are styled here). */
+.pwa-update-notice,
 .session-timeout-warning {
     position: sticky;
     top: 0.5rem;
     z-index: 1050;
+    margin: 0.75rem auto 0;
+    max-width: 1050px;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid #ddd6ec;
+    border-left: 5px solid #3b1d70;
+    border-radius: 10px;
+    background: #f3effb;
+    color: #26174d;
+    line-height: 1.45;
+    box-shadow: 0 5px 20px rgba(44, 25, 85, 0.12);
+}
+
+.pwa-update-notice.alert-warning,
+.session-timeout-warning {
+    border-left-color: #e2a500;
+    background: #fff5d8;
+}
+
+.pwa-update-notice strong {
+    display: block;
+    margin-bottom: 0.2rem;
+}
+
+.pwa-update-notice .btn,
+.session-timeout-warning .btn {
+    min-height: 2.75rem;
+    padding: 0.45rem 1rem;
+    border: 1px solid #8f86a6;
+    border-radius: 8px;
+    background: #fff;
+    color: #26174d;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.pwa-update-notice .btn-primary {
+    border-color: #1861ac;
+    background: #1b6ec2;
+    color: #fff;
+}
+
+.pwa-update-notice .btn-danger {
+    border-color: #a71d2a;
+    background: #c82333;
+    color: #fff;
+}
+
+.session-timeout-warning .btn-warning {
+    border-color: #b98700;
+    background: #e2a500;
+    color: #26174d;
+}
+
+.pwa-update-notice .mt-2 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.7rem;
+}
+
+.pwa-update-notice .ms-2 {
+    margin-left: 0;
 }

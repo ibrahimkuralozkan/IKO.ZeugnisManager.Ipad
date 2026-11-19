@@ -198,7 +198,7 @@ Pilot başarıyla tamamlandıktan sonra:
 3. Ders/öğretmen kapsam manifestini Admin tarafındaki yerel yetki kaydına bağla. Result içindeki izin listesine tek başına güvenme.
 4. Import sırasında yalnız kayıtlı öğrenci ID'leri ve kayıtlı rating/text/selection anahtarlarını birleştir.
 5. Replay protection, expiry ve audit log'u üretim Admin servisinde koru.
-6. PWA'da yeni sürüm bildirimi ve kullanıcı kontrollü güncelleme ekle.
+6. ~~PWA'da yeni sürüm bildirimi ve kullanıcı kontrollü güncelleme ekle.~~ v0.5.3 ile tamamlandı (bkz. bölüm 13).
 7. iPad Files/LOGINEO indirme-yükleme davranışını gerçek cihazlarda test et.
 8. ~~Paket kapatıldığında hassas state'i bellekten temizleme ve otomatik oturum zaman aşımı ekle.~~ v0.5.2 ile tamamlandı (bkz. bölüm 12).
 9. Almanca kullanıcı metinlerini sadeleştir ve öğretmen pilot geri bildirimlerine göre tablet arayüzünü iyileştir.
@@ -252,3 +252,18 @@ Claude'un bir sonraki adımları, kullanıcıyı her mesajda yalnız tek işleml
 - Kod: `ZeugnisManager.Teacher/Layout/SessionTimeout.razor`, `wwwroot/sessionTimeout.js`.
 - Doğrulama: yapay test paketiyle Playwright testi (uyarı, sıfırlama, kapanış) başarılı; Release build 0 hata/0 uyarı; 7/7 test.
 - Bölüm 11'deki gerçek veri adımları hâlâ okul bilgisayarında bekliyor; evde yalnız yapay verilerle çalışıldı.
+
+## 13. v0.5.3 — Kullanıcı onaylı PWA güncellemesi (19.11.2026, ev bilgisayarı)
+
+Ev bilgisayarındaki yerel konum: `C:\Users\ibrah\source\repos\IKO.ZeugnisManager.Ipad`.
+
+- Önceki davranış: yeni service worker hemen `skipWaiting` yapıp tüm açık pencereleri yeniden yüklüyordu; açık paketteki kaydedilmemiş girdiler sessizce kaybolabiliyordu.
+- Yeni davranış: yeni sürüm `waiting` durumunda bekler. Uygulamanın üstünde `Neue Version verfügbar` bildirimi çıkar; `Jetzt aktualisieren` veya `Später` seçilir.
+- Paket veya Admin çalışma dosyası açıksa (`zmSessionTimeout.isActive()`), önce ek uyarı gösterilir; `Trotzdem aktualisieren` ile onaylanmadan yenilenmez.
+- Onaydan sonra sayfa `SKIP_WAITING` mesajı gönderir; `controllerchange` olayında yalnız onay veren pencere yeniden yüklenir.
+- Güncelleme kontrolü: uygulama açılışında, uygulama tekrar ön plana geldiğinde ve her 30 dakikada bir. `Später` sonrası bildirim bir sonraki açılışta tekrar görünür.
+- Geçiş: v0.5.2 ve öncesi sayfalar bildirimi gösteremez. Yeni service worker kurulurken açık sayfalara `ZM_UPDATE_PING` gönderir; 2 saniye içinde yanıt yoksa eski davranış gibi kendini etkinleştirir (ama zorla yeniden yükleme yapmaz). Böylece v0.5.2 kullanıcıları v0.5.3'e takılmadan geçer.
+- Kod: `wwwroot/pwaUpdate.js` (service worker kaydı da burada), `Layout/UpdateNotice.razor`, `wwwroot/service-worker.published.js`.
+- Geliştirme ortamındaki `service-worker.js` önbellek kullanmadığı için bildirim yalnız publish edilmiş sürümde görülür.
+- Not: `index.html` `lib/bootstrap/...` dosyasına bağlanıyor ama repoda `wwwroot/lib` yok; Bootstrap sınıfları çalışmıyor. Güncelleme bildirimi ve zaman aşımı uyarısı bu yüzden `wwwroot/css/app.css` içinde kendi stilleriyle tanımlandı.
+- Doğrulama (yerel publish + Node statik sunucu, yapay veri yok): 0.5.3 ilk kurulumda bildirim yok; sahte 0.5.4 yayınında bildirim çıktı, yeni worker `waiting` kaldı; dosya açıkken ek uyarı göründü; `Jetzt aktualisieren` sonrası 0.5.4 yüklendi ve eski önbellek silindi. Geçiş testi: 0.5.2'den 0.5.3'e worker kendiliğinden etkinleşti, açık sayfa zorla yenilenmedi, sonraki açılış 0.5.3 oldu. Release build 0 hata, 7/7 test.

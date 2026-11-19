@@ -5,6 +5,10 @@ self.importScripts('./service-worker-assets.js');
 self.addEventListener('install', event => event.waitUntil(onInstall(event)));
 self.addEventListener('activate', event => event.waitUntil(onActivate(event)));
 self.addEventListener('fetch', event => event.respondWith(onFetch(event)));
+self.addEventListener('message', event => {
+    // Sent by pwaUpdate.js after the user confirmed the update.
+    if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 const cacheNamePrefix = 'offline-cache-';
 const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
@@ -24,9 +28,25 @@ async function onInstall(event) {
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
         .map(asset => new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' }));
     await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
-    // Activate a newly published version immediately instead of leaving it waiting
-    // behind an older installed PWA version.
-    await self.skipWaiting();
+
+    // A new version waits until the user confirms it in the app. Pages from versions
+    // before 0.5.3 cannot show that prompt, so activate directly when no open page answers.
+    if (!(await anyPageSupportsUpdatePrompt())) await self.skipWaiting();
+}
+
+async function anyPageSupportsUpdatePrompt() {
+    const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (windowClients.length === 0) return true;
+    return new Promise(resolve => {
+        const timer = setTimeout(() => resolve(false), 2000);
+        windowClients.forEach(client => {
+            const channel = new MessageChannel();
+            channel.port1.onmessage = event => {
+                if (event.data && event.data.type === 'ZM_UPDATE_PONG') { clearTimeout(timer); resolve(true); }
+            };
+            client.postMessage({ type: 'ZM_UPDATE_PING' }, [channel.port2]);
+        });
+    });
 }
 
 async function onActivate(event) {
@@ -38,11 +58,8 @@ async function onActivate(event) {
         .filter(key => key.startsWith(cacheNamePrefix) && key !== cacheName)
         .map(key => caches.delete(key)));
     await self.clients.claim();
-
-    // Existing installed PWA windows may still be executing the previous app
-    // bundle. Reload each controlled window once when this new worker activates.
-    const windowClients = await self.clients.matchAll({ type: 'window' });
-    await Promise.all(windowClients.map(client => client.navigate(client.url)));
+    // No forced reload here: open windows reload themselves after the user confirmed
+    // the update, so unsaved input in an open package is never discarded silently.
 }
 
 async function onFetch(event) {

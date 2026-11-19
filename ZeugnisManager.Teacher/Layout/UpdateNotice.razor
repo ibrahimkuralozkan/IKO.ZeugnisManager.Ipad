@@ -1,0 +1,64 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (available)
+{
+    <div class="alert @(confirmOpenFile ? "alert-warning" : "alert-info") pwa-update-notice" role="status">
+        @if (!confirmOpenFile)
+        {
+            <strong>Neue Version verfügbar.</strong>
+            <span>Die App kann jetzt aktualisiert werden. Das dauert nur wenige Sekunden.</span>
+            <div class="mt-2">
+                <button class="btn btn-sm btn-primary" @onclick="UpdateNow">Jetzt aktualisieren</button>
+                <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="Later">Später</button>
+            </div>
+        }
+        else
+        {
+            <strong>Es ist noch eine Datei geöffnet.</strong>
+            <span>Beim Aktualisieren wird sie geschlossen. Eingaben, die noch nicht heruntergeladen wurden, gehen verloren. Bitte laden Sie Ihre Ergebnisse zuerst herunter.</span>
+            <div class="mt-2">
+                <button class="btn btn-sm btn-danger" @onclick="Apply">Trotzdem aktualisieren</button>
+                <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="() => confirmOpenFile = false">Abbrechen</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private DotNetObjectReference<UpdateNotice>? reference;
+    private bool available, confirmOpenFile;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        reference = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("zmPwaUpdate.connect", reference);
+    }
+
+    [JSInvokable]
+    public void UpdateAvailable()
+    {
+        if (available) return;
+        available = true;
+        StateHasChanged();
+    }
+
+    private async Task UpdateNow()
+    {
+        if (await JS.InvokeAsync<bool>("zmPwaUpdate.isFileOpen")) confirmOpenFile = true;
+        else await Apply();
+    }
+
+    private async Task Apply() => await JS.InvokeVoidAsync("zmPwaUpdate.apply");
+
+    // Hidden until the next app start; the waiting version is offered again then.
+    private void Later() { available = false; confirmOpenFile = false; }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("zmPwaUpdate.disconnect"); }
+        catch (JSDisconnectedException) { }
+        reference?.Dispose();
+    }
+}
