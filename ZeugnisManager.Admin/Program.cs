@@ -7,6 +7,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddSingleton<ZeugnisManager.Admin.Services.PilotPackageService>();
 builder.Services.AddSingleton<ZeugnisManager.Admin.Services.LegacyDataSourceService>();
+builder.Services.AddSingleton<ZeugnisManager.Admin.Services.LegacyCatalogService>();
+builder.Services.AddSingleton<ZeugnisManager.Admin.Services.RealPackageService>();
 
 var app = builder.Build();
 

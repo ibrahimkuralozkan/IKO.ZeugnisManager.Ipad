@@ -16,6 +16,7 @@ Bu repo yeni, platform bağımsız ZeugnisManager sistemidir. Eski `IKO.ZeugnisM
 ```powershell
 dotnet test IKO.ZeugnisManager.Ipad.sln
 dotnet run --project ZeugnisManager.Teacher
+dotnet run --project ZeugnisManager.Admin
 ```
 
 PWA tarayıcıdan ana ekrana kurulabilir. MAUI veya sistem çapında bir runtime kurulumu gerekmez.
@@ -31,3 +32,7 @@ Tüm projelerin ortak sürümü kökteki `Directory.Build.props` dosyasında tut
 `https://ibrahimkuralozkan.github.io/IKO.ZeugnisManager.Ipad/`
 
 Yayında yalnızca boş uygulama bulunur. Öğrenci, öğretmen, karne, parola ve `.zmpkg` dosyaları yayınlanmaz.
+
+## Gerçek paket iş akışı (v0.4.0)
+
+Admin uygulamasında önce `/datenquelle` ekranından eski `IKO.ZeugnisManager.Web` veri klasörü seçilir. Ardından `/pakete` ekranında sınıf, öğretmen ve yalnızca öğretmenin işleyeceği alan seçilerek şifreli görev paketi hazırlanır. Dönen paket önce görüntülenip kontrol edilir, sonra merkezi yerel verilere aktarılır. Yetki kaydı ve denetim izi yalnız Admin bilgisayarındaki `AppData/Exchange` altında tutulur; Git'e eklenmez.

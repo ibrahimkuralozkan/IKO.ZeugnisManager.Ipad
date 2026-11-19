@@ -1,0 +1,162 @@
+@page "/pakete"
+@using IKO.ZeugnisManager.Core
+@using ZeugnisManager.Admin.Models
+@using ZeugnisManager.Admin.Services
+@inject RealPackageService Packages
+@inject IJSRuntime JS
+
+<PageTitle>Austauschpakete – Zeugnis Manager</PageTitle>
+
+<h1>Austauschpakete</h1>
+<p>Erstellen Sie einen verschlüsselten Arbeitsauftrag für eine Lehrkraft oder übernehmen Sie ein geprüftes Rückgabepaket in die zentrale Datenquelle.</p>
+
+<div class="alert alert-warning">
+    <strong>Datenschutz:</strong> Übermitteln Sie Paket und Kennwort getrennt. Importieren Sie ausschließlich Pakete, die über den freigegebenen Schulweg zurückgesendet wurden.
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-6">
+        <section class="card p-4 h-100">
+            <h2 class="h4">1. Arbeitsauftrag erstellen</h2>
+            <label class="form-label w-100">Klasse
+                <select class="form-select" value="@selectedClass" @onchange="ClassChanged">
+                    <option value="">— bitte wählen —</option>
+                    @foreach (var item in classes) { <option value="@item">@item</option> }
+                </select>
+            </label>
+            <label class="form-label w-100">Lehrkraft
+                <select class="form-select" @bind="selectedTeacher">
+                    <option value="">— bitte wählen —</option>
+                    @foreach (var item in teachers) { <option value="@item">@item</option> }
+                </select>
+            </label>
+            <label class="form-label w-100">Bearbeitungsbereich
+                <select class="form-select" @bind="selectedScopeId" disabled="@(scopes.Count == 0)">
+                    <option value="">— bitte wählen —</option>
+                    @foreach (var item in scopes) { <option value="@item.Id">@item.Label</option> }
+                </select>
+            </label>
+            <label class="form-label w-100">Gültig bis<InputDate class="form-control" @bind-Value="expiresOn" /></label>
+            <label class="form-label w-100">Paketkennwort (mindestens 12 Zeichen)
+                <input class="form-control" type="password" autocomplete="new-password" @bind="createPassword" />
+            </label>
+            <button class="btn btn-primary mt-2" @onclick="CreatePackage">Verschlüsseltes Paket herunterladen</button>
+        </section>
+    </div>
+
+    <div class="col-xl-6">
+        <section class="card p-4 h-100">
+            <h2 class="h4">2. Rückgabepaket übernehmen</h2>
+            <label class="form-label w-100">Rückgabepaket (.zmpkg)<InputFile class="form-control" accept=".zmpkg" OnChange="SelectResult" /></label>
+            <label class="form-label w-100">Dasselbe Paketkennwort
+                <input class="form-control" type="password" autocomplete="current-password" @bind="importPassword" />
+            </label>
+            <button class="btn btn-outline-primary mt-2 me-2" disabled="@(resultBytes is null)" @onclick="InspectResult">Paket prüfen</button>
+            <button class="btn btn-success mt-2" disabled="@(inspected is null)" @onclick="ImportResult">Geprüfte Daten übernehmen</button>
+
+            @if (inspected is not null)
+            {
+                <div class="border rounded p-3 mt-3">
+                    <h3 class="h5">Prüfergebnis</h3>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Lehrkraft</dt><dd class="col-sm-7">@inspected.TeacherName</dd>
+                        <dt class="col-sm-5">Klasse</dt><dd class="col-sm-7">@inspected.ClassName</dd>
+                        <dt class="col-sm-5">Bereich</dt><dd class="col-sm-7">@inspected.ScopeLabel</dd>
+                        <dt class="col-sm-5">Schuljahr / Halbjahr</dt><dd class="col-sm-7">@inspected.SchoolYear / @inspected.HalfYear</dd>
+                        <dt class="col-sm-5">Datensätze</dt><dd class="col-sm-7">@inspected.Students.Count</dd>
+                    </dl>
+                    <p class="text-danger mt-2 mb-0"><strong>Bitte prüfen:</strong> Erst danach „Geprüfte Daten übernehmen“ wählen.</p>
+                </div>
+            }
+        </section>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert @(isError ? "alert-danger" : "alert-success") mt-4">@message</div>
+}
+
+@code {
+    private IReadOnlyList<string> classes = [];
+    private IReadOnlyList<string> teachers = [];
+    private IReadOnlyList<RealExchangeScope> scopes = [];
+    private string selectedClass = "", selectedTeacher = "", selectedScopeId = "";
+    private DateTime expiresOn = DateTime.Today.AddDays(14);
+    private string createPassword = "", importPassword = "";
+    private byte[]? resultBytes;
+    private ExchangePackageDocument? inspected;
+    private string? message;
+    private bool isError;
+
+    protected override void OnInitialized()
+    {
+        try { classes = Packages.GetClasses(); teachers = Packages.GetTeachers(); }
+        catch (Exception ex) { Fail(ex.Message); }
+    }
+
+    private void ClassChanged(ChangeEventArgs args)
+    {
+        Reset(); selectedClass = args.Value?.ToString() ?? ""; selectedScopeId = "";
+        try { scopes = string.IsNullOrWhiteSpace(selectedClass) ? [] : Packages.GetScopes(selectedClass); }
+        catch (Exception ex) { scopes = []; Fail(ex.Message); }
+    }
+
+    private async Task CreatePackage()
+    {
+        Reset();
+        try
+        {
+            if (string.IsNullOrWhiteSpace(selectedClass)) throw new InvalidOperationException("Bitte eine Klasse wählen.");
+            if (string.IsNullOrWhiteSpace(selectedTeacher)) throw new InvalidOperationException("Bitte eine Lehrkraft wählen.");
+            var scope = scopes.FirstOrDefault(x => x.Id == selectedScopeId) ?? throw new InvalidOperationException("Bitte einen Bearbeitungsbereich wählen.");
+            if (expiresOn < DateTime.Today) throw new InvalidOperationException("Das Ablaufdatum darf nicht in der Vergangenheit liegen.");
+            var expiresUtc = new DateTimeOffset(expiresOn.Date.AddDays(1).AddTicks(-1), TimeZoneInfo.Local.GetUtcOffset(expiresOn)).ToUniversalTime();
+            var created = Packages.CreateAssignment(selectedClass, selectedTeacher, scope, createPassword, expiresUtc);
+            await JS.InvokeVoidAsync("downloadFileFromBytes", created.FileName, Convert.ToBase64String(created.Bytes), "application/octet-stream");
+            message = "Arbeitsauftrag wurde verschlüsselt erstellt und heruntergeladen. Kennwort bitte getrennt übermitteln.";
+        }
+        catch (Exception ex) { Fail(ex.Message); }
+    }
+
+    private async Task SelectResult(InputFileChangeEventArgs args)
+    {
+        Reset();
+        try
+        {
+            await using var stream = args.File.OpenReadStream(50 * 1024 * 1024);
+            using var memory = new MemoryStream(); await stream.CopyToAsync(memory); resultBytes = memory.ToArray();
+            message = $"Datei ausgewählt: {args.File.Name}. Bitte Kennwort eingeben und Paket prüfen.";
+        }
+        catch (Exception ex) { resultBytes = null; Fail(ex.Message); }
+    }
+
+    private void InspectResult()
+    {
+        Reset(false);
+        try
+        {
+            if (resultBytes is null) throw new InvalidOperationException("Bitte ein Rückgabepaket auswählen.");
+            inspected = Packages.Inspect(resultBytes, importPassword);
+            if (inspected.Kind != ExchangePackageKind.Result) throw new PackageSecurityException("Die Datei ist kein Rückgabepaket.");
+            message = "Rückgabepaket wurde entschlüsselt. Bitte Angaben prüfen und anschließend übernehmen.";
+        }
+        catch (Exception ex) { inspected = null; Fail(ex.Message); }
+    }
+
+    private void ImportResult()
+    {
+        Reset(false);
+        try
+        {
+            if (resultBytes is null || inspected is null) throw new InvalidOperationException("Bitte das Rückgabepaket zuerst prüfen.");
+            var result = Packages.ImportResult(resultBytes, importPassword);
+            message = $"Import abgeschlossen: {result.UpdatedStudents} Schülerdatensätze, {result.UpdatedFields} Felder aktualisiert.";
+            inspected = null; resultBytes = null; importPassword = "";
+        }
+        catch (Exception ex) { Fail(ex.Message); }
+    }
+
+    private void Reset(bool clearInspection = true) { message = null; isError = false; if (clearInspection) inspected = null; }
+    private void Fail(string text) { message = text; isError = true; }
+}

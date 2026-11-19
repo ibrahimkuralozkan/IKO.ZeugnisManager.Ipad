@@ -64,6 +64,14 @@ Blazor Server yönetici uygulamasının temeli.
 
 Pilot ekran iki yapay öğrenci (`Test Schüler A/B`) ile uçtan uca iPad testini doğrulamak içindir. Gerçek öğrenci verisi içermez.
 
+v0.4.0 ile gerçek yerel paket akışı eklendi:
+
+- Veri kaynağı seçimi: `Components/Pages/Datenquelle.razor`
+- Gerçek paket oluşturma ve içe aktarma: `Components/Pages/Pakete.razor`
+- Yerel veri bağlantısı: `Services/LegacyDataSourceService.cs`
+- Kapsam, yetkilendirme, replay koruması ve audit: `Services/RealPackageService.cs`
+- Paket yetki/audit kayıtları: yalnız yerel `ZeugnisManager.Admin/AppData/Exchange` (Git dışında)
+
 ### `ZeugnisManager.Tests`
 
 `PackageCryptoTests.cs` şunları test eder:
@@ -119,6 +127,8 @@ dotnet run --project ZeugnisManager.Admin\ZeugnisManager.Admin.csproj --launch-p
 ```
 
 Pilot ekran: `http://localhost:5012/pilot`
+
+Gerçek paket ekranı: `http://localhost:5012/pakete`
 
 Test ve build:
 

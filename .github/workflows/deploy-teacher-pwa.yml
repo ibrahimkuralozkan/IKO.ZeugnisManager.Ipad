@@ -6,6 +6,7 @@ on:
     paths:
       - "ZeugnisManager.Teacher/**"
       - "ZeugnisManager.Core/**"
+      - "Directory.Build.props"
       - ".github/workflows/deploy-teacher-pwa.yml"
   workflow_dispatch:
 
