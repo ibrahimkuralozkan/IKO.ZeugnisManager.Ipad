@@ -1,0 +1,52 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (warning)
+{
+    <div class="alert alert-warning session-timeout-warning" role="alert">
+        <strong>Keine Eingabe seit längerer Zeit.</strong>
+        Aus Datenschutzgründen wird die geöffnete Datei in Kürze geschlossen. Nicht gespeicherte Eingaben gehen dabei verloren.
+        <button class="btn btn-sm btn-warning ms-2" @onclick="StayActive">Weiterarbeiten</button>
+    </div>
+}
+
+@code {
+    public const int TimeoutMinutes = 20;
+    private const int WarningBeforeMinutes = 2;
+
+    [Parameter] public bool Active { get; set; }
+    [Parameter] public EventCallback OnTimeout { get; set; }
+
+    private DotNetObjectReference<SessionTimeout>? reference;
+    private bool running, warning;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Active == running) return;
+        running = Active; warning = false;
+        if (Active)
+        {
+            reference ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("zmSessionTimeout.start", reference, TimeoutMinutes * 60_000, (TimeoutMinutes - WarningBeforeMinutes) * 60_000);
+        }
+        else await JS.InvokeVoidAsync("zmSessionTimeout.stop");
+    }
+
+    [JSInvokable] public void Warn() { warning = true; StateHasChanged(); }
+    [JSInvokable] public void Activity() { warning = false; StateHasChanged(); }
+
+    [JSInvokable]
+    public async Task Expire()
+    {
+        running = false; warning = false;
+        await OnTimeout.InvokeAsync();
+    }
+
+    private async Task StayActive() { warning = false; await JS.InvokeVoidAsync("zmSessionTimeout.touch"); }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (running) await JS.InvokeVoidAsync("zmSessionTimeout.stop");
+        reference?.Dispose();
+    }
+}

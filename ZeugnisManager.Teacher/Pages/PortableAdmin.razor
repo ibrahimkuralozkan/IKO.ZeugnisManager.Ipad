@@ -7,6 +7,7 @@
 <PageTitle>Mobiler Admin – Zeugnis Manager</PageTitle>
 <div class="teacher-package-page">
  <h1>Mobiler Admin</h1>
+ <SessionTimeout Active="@(workspace is not null)" OnTimeout="TimeoutClose" />
  <p class="privacy-note"><strong>Nur dienstliches Gerät:</strong> Verwenden Sie ausschließlich die verschlüsselte <code>.zmadm</code>-Datei aus dem schulischen LOGINEO-Speicher. Kennwörter niemals in derselben Cloudablage speichern.</p>
  @if (workspace is null)
  {
@@ -54,6 +55,7 @@
  private async Task SaveWorkspaceCore(){if(workspace is null)return;var saved=await Workspaces.SaveAsync(workspace,adminPassword);await Download(saved.FileName,saved.Bytes);}
  private async Task Download(string name,byte[] data)=>await JS.InvokeVoidAsync("downloadFileFromBytes",name,Convert.ToBase64String(data),"application/octet-stream");
  private static async Task<byte[]> Read(IBrowserFile file,long max){await using var stream=file.OpenReadStream(max);using var memory=new MemoryStream();await stream.CopyToAsync(memory);return memory.ToArray();}
+ private void TimeoutClose(){CloseWorkspace();Fail($"Der Admin-Modus wurde nach {SessionTimeout.TimeoutMinutes} Minuten ohne Eingabe aus Datenschutzgründen geschlossen. Nicht gesicherte Änderungen wurden verworfen.");}
  private void CloseWorkspace(){workspace=null;workspaceBytes=null;resultBytes=null;adminPassword="";packagePassword="";resultPassword="";Reset();}
  private void Reset(){message="";error=false;}private void Fail(string value){message=value;error=true;}
 }

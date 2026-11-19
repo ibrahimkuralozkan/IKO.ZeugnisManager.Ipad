@@ -8,6 +8,7 @@
 
 <div class="teacher-package-page">
     <h1>Zeugnis Manager</h1>
+    <SessionTimeout Active="@(package is not null)" OnTimeout="TimeoutClose" />
     <p class="privacy-note"><strong>Datenschutzhinweis:</strong> Bearbeiten Sie ausschließlich das bereitgestellte verschlüsselte Paket. Speichern oder übertragen Sie keine unverschlüsselten Zeugnisse auf privaten Geräten. Senden Sie das Rückgabepaket nur über den von der Schule freigegebenen Weg.</p>
     @if (package is null)
     {
@@ -70,5 +71,6 @@
     private static void SetRating(ExchangeStudentRecord student, string key, string id, int value) { if (!student.Ratings.TryGetValue(key, out var values)) student.Ratings[key] = values = new(); values[id] = value; }
     private static string GetSelection(ExchangeStudentRecord student, string key) => student.Selections.TryGetValue(key, out var value) ? value : "";
     private static string GetText(ExchangeStudentRecord student, string key) => student.Texts.TryGetValue(key, out var value) ? value : "";
+    private void TimeoutClose() { ClosePackage(); Fail($"Das Paket wurde nach {SessionTimeout.TimeoutMinutes} Minuten ohne Eingabe aus Datenschutzgründen geschlossen. Nicht gespeicherte Eingaben wurden verworfen."); }
     private void ClosePackage() { package = null; bytes = null; password = ""; ResetMessage(); } private void ResetMessage() { message = null; isError = false; } private void Fail(string text) { message = text; isError = true; }
 }

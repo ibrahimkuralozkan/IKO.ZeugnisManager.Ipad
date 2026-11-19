@@ -200,7 +200,7 @@ Pilot başarıyla tamamlandıktan sonra:
 5. Replay protection, expiry ve audit log'u üretim Admin servisinde koru.
 6. PWA'da yeni sürüm bildirimi ve kullanıcı kontrollü güncelleme ekle.
 7. iPad Files/LOGINEO indirme-yükleme davranışını gerçek cihazlarda test et.
-8. Paket kapatıldığında hassas state'i bellekten temizleme ve otomatik oturum zaman aşımı ekle.
+8. ~~Paket kapatıldığında hassas state'i bellekten temizleme ve otomatik oturum zaman aşımı ekle.~~ v0.5.2 ile tamamlandı (bkz. bölüm 12).
 9. Almanca kullanıcı metinlerini sadeleştir ve öğretmen pilot geri bildirimlerine göre tablet arayüzünü iyileştir.
 
 ## 10. Çalışma kuralları
@@ -243,3 +243,12 @@ Claude'un bir sonraki adımları, kullanıcıyı her mesajda yalnız tek işleml
 7. Okul bilgisayarındaki `/mobiladmin` ekranında R3 dosyasını önce kontrol et, sonra merkezi yerel verilere aktar. Gerçek veriyi değiştirmeden önce kullanıcıya test girdilerinin merkezi kayda yazılacağını açıkça bildir.
 
 Önemli yerel çalışma notu: localhost PWA `%97` seviyesinde kalırsa çalışan Teacher sürecini durdur, `dotnet build ZeugnisManager.Teacher/ZeugnisManager.Teacher.csproj --configuration Debug` çalıştır ve ardından `dotnet run ... --no-build` ile yeniden başlat. Bu hata daha önce Release/Debug statik asset manifestlerinin karışmasından kaynaklandı; kod veya parola hatası değildi.
+
+## 12. v0.5.2 — Hareketsizlik zaman aşımı (19.11.2026, ev bilgisayarı)
+
+- Teacher PWA `Lehrerpaket` (`/`) ve `Mobiler Admin` (`/admin`) ekranlarında dosya açıkken 20 dakika hiç giriş yapılmazsa paket/çalışma dosyası, parola ve dosya baytları bellekten silinir.
+- 18. dakikada uyarı gösterilir; herhangi bir dokunma/tuş/kaydırma veya `Weiterarbeiten` sayacı sıfırlar.
+- Süre gerçek saatle ölçülür; iPad uykudan uyanınca süre dolmuşsa hemen kapanır.
+- Kod: `ZeugnisManager.Teacher/Layout/SessionTimeout.razor`, `wwwroot/sessionTimeout.js`.
+- Doğrulama: yapay test paketiyle Playwright testi (uyarı, sıfırlama, kapanış) başarılı; Release build 0 hata/0 uyarı; 7/7 test.
+- Bölüm 11'deki gerçek veri adımları hâlâ okul bilgisayarında bekliyor; evde yalnız yapay verilerle çalışıldı.
