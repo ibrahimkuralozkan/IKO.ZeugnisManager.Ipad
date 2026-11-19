@@ -19,3 +19,11 @@ dotnet run --project ZeugnisManager.Teacher
 ```
 
 PWA tarayıcıdan ana ekrana kurulabilir. MAUI veya sistem çapında bir runtime kurulumu gerekmez.
+
+## Otomatik PWA yayını
+
+`main` dalında Teacher veya Core değiştiğinde GitHub Actions uygulamayı otomatik olarak GitHub Pages'e yayınlar:
+
+`https://ibrahimkuralozkan.github.io/IKO.ZeugnisManager.Ipad/`
+
+Yayında yalnızca boş uygulama bulunur. Öğrenci, öğretmen, karne, parola ve `.zmpkg` dosyaları yayınlanmaz.
