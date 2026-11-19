@@ -1,0 +1,59 @@
+@page "/admin"
+@using IKO.ZeugnisManager.Core
+@using ZeugnisManager.Teacher.Services
+@inject BrowserWorkspaceService Workspaces
+@inject IJSRuntime JS
+
+<PageTitle>Mobiler Admin – Zeugnis Manager</PageTitle>
+<div class="teacher-package-page">
+ <h1>Mobiler Admin</h1>
+ <p class="privacy-note"><strong>Nur dienstliches Gerät:</strong> Verwenden Sie ausschließlich die verschlüsselte <code>.zmadm</code>-Datei aus dem schulischen LOGINEO-Speicher. Kennwörter niemals in derselben Cloudablage speichern.</p>
+ @if (workspace is null)
+ {
+  <section class="teacher-package-card"><h2>Admin-Arbeitsbestand öffnen</h2>
+   <label>Admin-Datei (.zmadm)<InputFile class="form-control" accept=".zmadm" OnChange="SelectWorkspace" /></label>
+   <label>Admin-Kennwort<input class="form-control" type="password" @bind="adminPassword" /></label>
+   <button class="btn btn-primary" disabled="@(workspaceBytes is null)" @onclick="OpenWorkspace">Admin-Datei öffnen</button>
+  </section>
+ }
+ else
+ {
+  <section class="package-header"><div><span>Schuljahr</span><strong>@workspace.SchoolYear</strong></div><div><span>Halbjahr</span><strong>@workspace.HalfYear</strong></div><div><span>Revision</span><strong>@workspace.Revision</strong></div></section>
+  <div class="row g-4 mt-1">
+   <div class="col-lg-6"><section class="teacher-package-card h-100"><h2>Arbeitsauftrag erstellen</h2>
+    <label>Klasse<select class="form-select" value="@selectedClass" @onchange="ClassChanged"><option value="">— bitte wählen —</option>@foreach(var item in Classes){<option>@item</option>}</select></label>
+    <label>Lehrkraft<select class="form-select" @bind="teacher"><option value="">— bitte wählen —</option>@foreach(var item in workspace.Teachers){<option>@item</option>}</select></label>
+    <label>Bereich<select class="form-select" @bind="scopeId"><option value="">— bitte wählen —</option>@foreach(var item in Scopes){<option value="@item.ScopeId">@item.ScopeLabel</option>}</select></label>
+    <label>Gültig bis<InputDate class="form-control" @bind-Value="expiresOn" /></label>
+    <label>Paketkennwort<input class="form-control" type="password" @bind="packagePassword" /></label>
+    <button class="btn btn-primary" @onclick="CreateAssignment">Paket und aktualisierte Admin-Datei speichern</button>
+   </section></div>
+   <div class="col-lg-6"><section class="teacher-package-card h-100"><h2>Rückgabepaket übernehmen</h2>
+    <label>Rückgabepaket (.zmpkg)<InputFile class="form-control" accept=".zmpkg" OnChange="SelectResult" /></label>
+    <label>Paketkennwort<input class="form-control" type="password" @bind="resultPassword" /></label>
+    <button class="btn btn-success" disabled="@(resultBytes is null)" @onclick="ImportResult">Übernehmen und Admin-Datei speichern</button>
+   </section></div>
+  </div>
+  <div class="save-bar"><button class="btn btn-outline-primary" @onclick="SaveWorkspace">Admin-Datei sichern</button><button class="btn btn-outline-secondary" @onclick="CloseWorkspace">Admin-Modus schließen</button></div>
+ }
+ @if(!string.IsNullOrWhiteSpace(message)){<div class="alert @(error?"alert-danger":"alert-success") mt-3">@message</div>}
+ <p class="app-version">Version @AppVersion.Current · verschlüsselte lokale Verarbeitung</p>
+</div>
+
+@code {
+ private byte[]? workspaceBytes,resultBytes; private PortableAdminWorkspace? workspace; private string adminPassword="",selectedClass="",teacher="",scopeId="",packagePassword="",resultPassword="",message=""; private bool error; private DateTime expiresOn=DateTime.Today.AddDays(14);
+ private IEnumerable<string> Classes => workspace is null ? Enumerable.Empty<string>() : workspace.Templates.Select(x=>x.ClassName).Distinct().Order();
+ private IEnumerable<PortableAssignmentTemplate> Scopes => workspace is null ? Enumerable.Empty<PortableAssignmentTemplate>() : workspace.Templates.Where(x=>x.ClassName==selectedClass).OrderBy(x=>x.ScopeLabel);
+ private async Task SelectWorkspace(InputFileChangeEventArgs e){Reset();try{workspaceBytes=await Read(e.File,100*1024*1024);message="Admin-Datei ausgewählt.";}catch(Exception ex){Fail(ex.Message);}}
+ private async Task OpenWorkspace(){Reset();try{if(workspaceBytes is null)throw new InvalidOperationException("Bitte eine Admin-Datei auswählen.");workspace=await Workspaces.OpenAsync(workspaceBytes,adminPassword);message="Admin-Datei geöffnet. Die Daten bleiben nur in dieser Sitzung im Arbeitsspeicher.";}catch(Exception ex){workspace=null;Fail(ex.Message);}}
+ private void ClassChanged(ChangeEventArgs e){selectedClass=e.Value?.ToString()??"";scopeId="";}
+ private async Task CreateAssignment(){Reset();try{if(workspace is null)return;if(string.IsNullOrWhiteSpace(teacher))throw new InvalidOperationException("Bitte eine Lehrkraft wählen.");var template=Scopes.FirstOrDefault(x=>x.ScopeId==scopeId)??throw new InvalidOperationException("Bitte einen Bereich wählen.");var expiry=new DateTimeOffset(expiresOn.Date.AddDays(1).AddTicks(-1),TimeZoneInfo.Local.GetUtcOffset(expiresOn)).ToUniversalTime();var package=await Workspaces.CreateAssignmentAsync(workspace,template,teacher,expiry,packagePassword);await Download(package.FileName,package.Bytes);await SaveWorkspaceCore();message="Arbeitsauftrag und aktualisierte Admin-Datei wurden gespeichert. Beide Dateien gezielt in LOGINEO ablegen; Kennwörter getrennt übermitteln.";}catch(Exception ex){Fail(ex.Message);}}
+ private async Task SelectResult(InputFileChangeEventArgs e){Reset();try{resultBytes=await Read(e.File,50*1024*1024);message="Rückgabepaket ausgewählt.";}catch(Exception ex){Fail(ex.Message);}}
+ private async Task ImportResult(){Reset();try{if(workspace is null||resultBytes is null)throw new InvalidOperationException("Bitte ein Rückgabepaket auswählen.");var result=await Workspaces.ImportResultAsync(workspace,resultBytes,resultPassword);await SaveWorkspaceCore();resultBytes=null;resultPassword="";message=$"Übernommen: {result.Students} Schülerdatensätze, {result.Fields} Felder. Aktualisierte Admin-Datei wurde gespeichert.";}catch(Exception ex){Fail(ex.Message);}}
+ private async Task SaveWorkspace(){Reset();try{await SaveWorkspaceCore();message="Aktualisierte Admin-Datei wurde gespeichert.";}catch(Exception ex){Fail(ex.Message);}}
+ private async Task SaveWorkspaceCore(){if(workspace is null)return;var saved=await Workspaces.SaveAsync(workspace,adminPassword);await Download(saved.FileName,saved.Bytes);}
+ private async Task Download(string name,byte[] data)=>await JS.InvokeVoidAsync("downloadFileFromBytes",name,Convert.ToBase64String(data),"application/octet-stream");
+ private static async Task<byte[]> Read(IBrowserFile file,long max){await using var stream=file.OpenReadStream(max);using var memory=new MemoryStream();await stream.CopyToAsync(memory);return memory.ToArray();}
+ private void CloseWorkspace(){workspace=null;workspaceBytes=null;resultBytes=null;adminPassword="";packagePassword="";resultPassword="";Reset();}
+ private void Reset(){message="";error=false;}private void Fail(string value){message=value;error=true;}
+}

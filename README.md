@@ -36,3 +36,7 @@ Yayında yalnızca boş uygulama bulunur. Öğrenci, öğretmen, karne, parola v
 ## Gerçek paket iş akışı (v0.4.0)
 
 Admin uygulamasında önce `/datenquelle` ekranından eski `IKO.ZeugnisManager.Web` veri klasörü seçilir. Ardından `/pakete` ekranında sınıf, öğretmen ve yalnızca öğretmenin işleyeceği alan seçilerek şifreli görev paketi hazırlanır. Dönen paket önce görüntülenip kontrol edilir, sonra merkezi yerel verilere aktarılır. Yetki kaydı ve denetim izi yalnız Admin bilgisayarındaki `AppData/Exchange` altında tutulur; Git'e eklenmez.
+
+## Mobiler Admin (v0.5.0)
+
+Okul bilgisayarındaki `/mobiladmin` ekranı tüm çalışma durumunu güçlü parola ile şifrelenmiş `.zmadm` dosyasına aktarır. Bu dosya okulun LOGINEO bulutuna konup dienstliches iPad üzerinde PWA'nın `/admin` ekranında açılabilir. Tabletten öğretmen paketi üretilebilir, dönüş paketi birleştirilebilir ve revizyonu artırılmış yeni `.zmadm` dosyası indirilebilir. Bulutta yalnız şifreli dosya tutulur; parola ayrı kanalda saklanır. Aynı dosya iki cihazda eşzamanlı düzenlenmemelidir.

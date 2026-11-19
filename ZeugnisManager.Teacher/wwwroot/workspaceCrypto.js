@@ -1,0 +1,9 @@
+window.browserWorkspaceCrypto = (() => {
+ const format="IKO.ZeugnisManager.ZMADM",version=1,iterations=310000,encoder=new TextEncoder(),decoder=new TextDecoder(),aad=encoder.encode(`${format}|${version}`);
+ const from64=v=>{const b=atob(v),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;};
+ const to64=a=>{let b="";for(let i=0;i<a.length;i+=0x8000)b+=String.fromCharCode(...a.subarray(i,i+0x8000));return btoa(b);};
+ async function key(p,s,c){const m=await crypto.subtle.importKey("raw",encoder.encode(p),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:s,iterations:c,hash:"SHA-256"},m,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);}
+ async function decrypt(base64,p){const e=JSON.parse(decoder.decode(from64(base64)));if(e.Format!==format||e.Version!==version)throw new Error("format");const s=from64(e.Salt),n=from64(e.Nonce),t=from64(e.Tag),c=from64(e.Ciphertext);if(s.length!==16||n.length!==12||t.length!==16||e.Iterations<100000||e.Iterations>2000000)throw new Error("parameters");const all=new Uint8Array(c.length+t.length);all.set(c);all.set(t,c.length);return decoder.decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:n,additionalData:aad,tagLength:128},await key(p,s,e.Iterations),all));}
+ async function encrypt(text,p){const s=crypto.getRandomValues(new Uint8Array(16)),n=crypto.getRandomValues(new Uint8Array(12)),all=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv:n,additionalData:aad,tagLength:128},await key(p,s,iterations),encoder.encode(text))),c=all.subarray(0,all.length-16),t=all.subarray(all.length-16);return to64(encoder.encode(JSON.stringify({Format:format,Version:version,Kdf:"PBKDF2-SHA256",Iterations:iterations,Salt:to64(s),Nonce:to64(n),Tag:to64(t),Ciphertext:to64(c)})));}
+ return {encrypt,decrypt};
+})();

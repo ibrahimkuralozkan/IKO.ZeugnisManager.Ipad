@@ -1,0 +1,35 @@
+@page "/mobiladmin"
+@using IKO.ZeugnisManager.Core
+@using ZeugnisManager.Admin.Services
+@inject PortableWorkspaceService Workspaces
+@inject IJSRuntime JS
+
+<PageTitle>Mobiler Admin – Zeugnis Manager</PageTitle>
+<h1>Mobiler Admin-Arbeitsbestand</h1>
+<p>Erstellen Sie eine vollständig verschlüsselte Arbeitsdatei für das dienstliche iPad oder übernehmen Sie die aktualisierte Datei wieder in die zentrale Datenquelle.</p>
+<div class="alert alert-info"><strong>LOGINEO:</strong> Speichern Sie ausschließlich die Datei mit der Endung <code>.zmadm</code> im schulischen Cloudspeicher. Das Kennwort darf dort nicht mitgespeichert werden.</div>
+
+<div class="row g-4">
+ <div class="col-lg-6"><section class="card p-4 h-100"><h2 class="h4">1. Für das Schultablet bereitstellen</h2>
+  <label class="form-label w-100">Admin-Kennwort (mindestens 12 Zeichen)<input class="form-control" type="password" @bind="exportPassword" /></label>
+  <label class="form-label w-100">Kennwort wiederholen<input class="form-control" type="password" @bind="confirmPassword" /></label>
+  <button class="btn btn-primary" @onclick="Export">Verschlüsselte Admin-Datei herunterladen</button>
+ </section></div>
+ <div class="col-lg-6"><section class="card p-4 h-100"><h2 class="h4">2. Vom Schultablet zurücknehmen</h2>
+  <label class="form-label w-100">Admin-Datei (.zmadm)<InputFile class="form-control" accept=".zmadm" OnChange="SelectFile" /></label>
+  <label class="form-label w-100">Admin-Kennwort<input class="form-control" type="password" @bind="importPassword" /></label>
+  <button class="btn btn-outline-primary me-2" disabled="@(bytes is null)" @onclick="Inspect">Datei prüfen</button>
+  <button class="btn btn-success" disabled="@(inspected is null)" @onclick="Import">Geprüfte Daten übernehmen</button>
+  @if (inspected is not null) { <div class="border rounded p-3 mt-3"><strong>@inspected.SchoolYear · @inspected.HalfYear. Halbjahr</strong><br />Revision @inspected.Revision · @inspected.Templates.SelectMany(x => x.Students).Select(x => x.StudentId).Distinct().Count() Schülerdatensätze<br />Zuletzt geändert: @inspected.UpdatedUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div> }
+ </section></div>
+</div>
+@if (!string.IsNullOrWhiteSpace(message)) { <div class="alert @(error ? "alert-danger" : "alert-success") mt-4">@message</div> }
+
+@code {
+ private string exportPassword = "", confirmPassword = "", importPassword = "", message = ""; private bool error; private byte[]? bytes; private PortableAdminWorkspace? inspected;
+ private async Task Export() { Reset(); try { if (exportPassword != confirmPassword) throw new InvalidOperationException("Die Kennwörter stimmen nicht überein."); var result = Workspaces.Create(exportPassword); await JS.InvokeVoidAsync("downloadFileFromBytes", result.FileName, Convert.ToBase64String(result.Bytes), "application/octet-stream"); message = "Admin-Datei erstellt. Bitte in den schulischen LOGINEO-Cloudspeicher übertragen."; } catch (Exception ex) { Fail(ex.Message); } }
+ private async Task SelectFile(InputFileChangeEventArgs e) { Reset(); try { await using var stream = e.File.OpenReadStream(100 * 1024 * 1024); using var memory = new MemoryStream(); await stream.CopyToAsync(memory); bytes = memory.ToArray(); message = "Datei ausgewählt. Bitte prüfen."; } catch (Exception ex) { Fail(ex.Message); } }
+ private void Inspect() { Reset(false); try { if (bytes is null) throw new InvalidOperationException("Bitte eine Admin-Datei auswählen."); inspected = Workspaces.Inspect(bytes, importPassword); message = "Admin-Datei erfolgreich geprüft."; } catch (Exception ex) { inspected = null; Fail(ex.Message); } }
+ private void Import() { Reset(false); try { if (bytes is null || inspected is null) throw new InvalidOperationException("Bitte die Admin-Datei zuerst prüfen."); var result = Workspaces.Import(bytes, importPassword); message = $"Übernahme abgeschlossen: {result.Students} Schülerdatensätze, {result.Fields} Felder."; inspected = null; bytes = null; } catch (Exception ex) { Fail(ex.Message); } }
+ private void Reset(bool clear = true) { message = ""; error = false; if (clear) inspected = null; } private void Fail(string value) { message = value; error = true; }
+}

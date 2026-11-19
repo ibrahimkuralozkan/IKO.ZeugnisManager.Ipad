@@ -72,6 +72,15 @@ v0.4.0 ile gerçek yerel paket akışı eklendi:
 - Kapsam, yetkilendirme, replay koruması ve audit: `Services/RealPackageService.cs`
 - Paket yetki/audit kayıtları: yalnız yerel `ZeugnisManager.Admin/AppData/Exchange` (Git dışında)
 
+v0.5.0 ile taşınabilir Admin akışı eklendi:
+
+- Okul bilgisayarında şifreli çalışma dosyası: `Components/Pages/MobilAdmin.razor` (`/mobiladmin`)
+- Tablet PWA Admin modu: `ZeugnisManager.Teacher/Pages/PortableAdmin.razor` (`/admin`)
+- Ortak `.zmadm` modeli ve AES-GCM şifreleme: `PortableAdminWorkspace.cs`, `WorkspaceCrypto.cs`
+- Tarayıcı Web Crypto uygulaması: `BrowserWorkspaceService.cs`, `workspaceCrypto.js`
+- `.zmadm` yalnız okulun LOGINEO bulutunda tutulur; parola aynı bulutta saklanmaz.
+- Her kayıtta revizyon artar. Aynı çalışma dosyası iki cihazda eşzamanlı düzenlenmemelidir.
+
 ### `ZeugnisManager.Tests`
 
 `PackageCryptoTests.cs` şunları test eder:
@@ -129,6 +138,10 @@ dotnet run --project ZeugnisManager.Admin\ZeugnisManager.Admin.csproj --launch-p
 Pilot ekran: `http://localhost:5012/pilot`
 
 Gerçek paket ekranı: `http://localhost:5012/pakete`
+
+Mobil Admin dışa/içe aktarma: `http://localhost:5012/mobiladmin`
+
+Yerel PWA mobil Admin: `http://localhost:5253/admin`
 
 Test ve build:
 

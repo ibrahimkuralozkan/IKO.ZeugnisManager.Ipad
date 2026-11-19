@@ -59,6 +59,18 @@ public sealed class BrowserPackageCrypto(IJSRuntime js)
         }
     }
 
+    public async Task<byte[]> EncryptAsync(ExchangePackageDocument document, string password)
+    {
+        ValidatePassword(password); ValidateDocument(document);
+        try
+        {
+            var json = JsonSerializer.Serialize(document, JsonOptions);
+            var base64 = await js.InvokeAsync<string>("browserPackageCrypto.encrypt", json, password);
+            return Convert.FromBase64String(base64);
+        }
+        catch (JSException) { throw new PackageSecurityException("Das Paket konnte in diesem Browser nicht verschlüsselt werden."); }
+    }
+
     private static void ValidatePassword(string password)
     {
         if (string.IsNullOrWhiteSpace(password) || password.Length < 12)

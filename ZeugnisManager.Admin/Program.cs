@@ -9,6 +9,7 @@ builder.Services.AddSingleton<ZeugnisManager.Admin.Services.PilotPackageService>
 builder.Services.AddSingleton<ZeugnisManager.Admin.Services.LegacyDataSourceService>();
 builder.Services.AddSingleton<ZeugnisManager.Admin.Services.LegacyCatalogService>();
 builder.Services.AddSingleton<ZeugnisManager.Admin.Services.RealPackageService>();
+builder.Services.AddSingleton<ZeugnisManager.Admin.Services.PortableWorkspaceService>();
 
 var app = builder.Build();
 

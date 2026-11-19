@@ -39,6 +39,15 @@ public sealed class RealPackageService(LegacyDataSourceService dataSource, Legac
     public (byte[] Bytes, string FileName, ExchangePackageDocument Document) CreateAssignment(
         string className, string teacherName, RealExchangeScope scope, string password, DateTimeOffset expiresUtc)
     {
+        var document = BuildAssignmentDocument(className, teacherName, scope, expiresUtc);
+        var bytes = PackageCrypto.Encrypt(document, password);
+        SaveAuthorization(document);
+        AppendAudit("created", document, 0, 0);
+        return (bytes, $"{Safe(className)}_{Safe(scope.Label)}_{Safe(teacherName)}_{document.PackageId:N}.zmpkg", document);
+    }
+
+    public ExchangePackageDocument BuildAssignmentDocument(string className, string teacherName, RealExchangeScope scope, DateTimeOffset expiresUtc)
+    {
         var settings = GetSettings();
         var document = new ExchangePackageDocument
         {
@@ -64,10 +73,37 @@ public sealed class RealPackageService(LegacyDataSourceService dataSource, Legac
             });
         }
         if (document.Students.Count == 0) throw new InvalidOperationException("Für diese Klasse wurden keine Schüler gefunden.");
-        var bytes = PackageCrypto.Encrypt(document, password);
-        SaveAuthorization(document);
-        AppendAudit("created", document, 0, 0);
-        return (bytes, $"{Safe(className)}_{Safe(scope.Label)}_{Safe(teacherName)}_{document.PackageId:N}.zmpkg", document);
+        return document;
+    }
+
+    public PortableAdminWorkspace CreateWorkspace()
+    {
+        var settings = GetSettings();
+        var workspace = new PortableAdminWorkspace { SchoolName = settings.SchoolName, SchoolYear = settings.SchoolYear, HalfYear = settings.HalfYear, Teachers = GetTeachers().ToList() };
+        foreach (var className in GetClasses())
+        foreach (var scope in GetScopes(className))
+        {
+            var document = BuildAssignmentDocument(className, "Vorlage", scope, DateTimeOffset.UtcNow.AddYears(1));
+            workspace.Templates.Add(new PortableAssignmentTemplate { ClassName = className, ScopeId = scope.Id, ScopeLabel = scope.Label, AllowedRatingKeys = document.AllowedRatingKeys, AllowedTextKeys = document.AllowedTextKeys, AllowedSelectionKeys = document.AllowedSelectionKeys, Students = document.Students });
+        }
+        return workspace;
+    }
+
+    public (int Students, int Fields) ApplyWorkspace(PortableAdminWorkspace workspace)
+    {
+        var settings = GetSettings();
+        if (workspace.SchoolYear != settings.SchoolYear || workspace.HalfYear != settings.HalfYear) throw new PackageSecurityException("Schuljahr oder Halbjahr der Admin-Datei stimmt nicht mit der Datenquelle überein.");
+        var changedStudents = new HashSet<Guid>(); var fields = 0;
+        foreach (var incoming in workspace.Templates.SelectMany(x => x.Students))
+        {
+            var target = LoadZeugnis(incoming.StudentId);
+            foreach (var pair in incoming.Ratings) { target.Bewertungen[pair.Key] = new(pair.Value); fields += pair.Value.Count; }
+            fields += Merge(target.Texte, incoming.Texts, incoming.Texts.Keys);
+            fields += Merge(target.Auswahlwerte, incoming.Selections, incoming.Selections.Keys);
+            target.StudentId = incoming.StudentId; target.ClassName = incoming.ClassName; target.SchoolYear = workspace.SchoolYear; target.Halbjahr = workspace.HalfYear;
+            SaveZeugnis(target); changedStudents.Add(incoming.StudentId);
+        }
+        return (changedStudents.Count, fields);
     }
 
     public ExchangePackageDocument Inspect(byte[] bytes, string password) => PackageCrypto.Decrypt(bytes, password);

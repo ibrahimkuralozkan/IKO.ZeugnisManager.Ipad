@@ -2,6 +2,6 @@
     <div class="container-fluid"><a class="navbar-brand" href="">Zeugnis Manager</a><button title="Menü" class="navbar-toggler" @onclick="ToggleNavMenu"><span class="navbar-toggler-icon"></span></button></div>
 </div>
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column"><div class="nav-item px-3"><NavLink class="nav-link" href="" Match="NavLinkMatch.All"><span class="bi bi-file-earmark-lock-fill-nav-menu" aria-hidden="true"></span> Lehrerpaket</NavLink></div></nav>
+    <nav class="nav flex-column"><div class="nav-item px-3"><NavLink class="nav-link" href="" Match="NavLinkMatch.All"><span class="bi bi-file-earmark-lock-fill-nav-menu" aria-hidden="true"></span> Lehrerpaket</NavLink></div><div class="nav-item px-3"><NavLink class="nav-link" href="admin"><span class="bi bi-shield-lock-fill" aria-hidden="true"></span> Mobiler Admin</NavLink></div></nav>
 </div>
 @code { private bool collapseNavMenu = true; private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null; private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu; }
