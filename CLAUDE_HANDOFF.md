@@ -219,3 +219,27 @@ Pilot başarıyla tamamlandıktan sonra:
 Yeni Claude oturumuna şu metin verilebilir:
 
 > `CLAUDE_HANDOFF.md` dosyasını tamamen oku. Ardından README, solution yapısı, git status ve son commitleri incele. Eski Web repo çalışan yedektir; gerçek kişisel verileri Git'e ekleme. Önce mevcut iPad uçtan uca pilotunu doğrula, sonra handoff'taki öncelik sırasına göre yeni Admin entegrasyonuna devam et. Her değişiklikte tüm solution build'i, güvenlik testleri ve GitHub Pages deployment kontrolü yap.
+
+## 11. Güncel kontrol noktası (19.11.2026)
+
+Aktif sürüm `0.5.1`, son işlevsel commit `24e2e4d`.
+
+Tamamlanan gerçek uçtan uca test adımları:
+
+1. Okul bilgisayarındaki Admin `/mobiladmin` ekranından gerçek yerel veriler kullanılarak Revision 1 şifreli `.zmadm` çalışma dosyası oluşturuldu.
+2. Yerel Teacher PWA `/admin` ekranında bu dosya başarıyla açıldı; Schuljahr, Halbjahr ve Revision doğru göründü.
+3. Bir sınıf, öğretmen ve ders alanı seçilerek gerçek kapsamlı `.zmpkg` öğretmen paketi oluşturuldu.
+4. Aynı işlem sonunda yetkilendirmeyi içeren Revision 2 `.zmadm` dosyası da başarıyla indirildi.
+5. Şimdi Teacher PWA'nın `Lehrerpaket` ekranı açık. Son oluşturulan gerçek `.zmpkg` henüz seçilmedi/açılmadı.
+
+Claude'un bir sonraki adımları, kullanıcıyı her mesajda yalnız tek işlemle yönlendirerek:
+
+1. `Downloads` içindeki en yeni, pilot olmayan `.zmpkg` dosyasını `Lehrerpaket` ekranında seçtir.
+2. Kullanıcının bu test için belirlediği paket parolasını girdir; parola repoya veya sohbetteki kalıcı belgeye yazılmamalı.
+3. `Arbeitsauftrag öffnen` ile alanların yalnız seçilen sınıf/ders kapsamını içerdiğini doğrula.
+4. Birkaç yapay test değerlendirmesi girip şifreli `Rueckgabe_*.zmpkg` üret.
+5. `Mobiler Admin` ekranında mutlaka Revision 2 `.zmadm` dosyasını aç; Revision 1 kullanılmamalı çünkü paket yetkilendirmesi R2 içindedir.
+6. Dönüş paketini içe aktar ve Revision 3 `.zmadm` dosyasını oluştur.
+7. Okul bilgisayarındaki `/mobiladmin` ekranında R3 dosyasını önce kontrol et, sonra merkezi yerel verilere aktar. Gerçek veriyi değiştirmeden önce kullanıcıya test girdilerinin merkezi kayda yazılacağını açıkça bildir.
+
+Önemli yerel çalışma notu: localhost PWA `%97` seviyesinde kalırsa çalışan Teacher sürecini durdur, `dotnet build ZeugnisManager.Teacher/ZeugnisManager.Teacher.csproj --configuration Debug` çalıştır ve ardından `dotnet run ... --no-build` ile yeniden başlat. Bu hata daha önce Release/Debug statik asset manifestlerinin karışmasından kaynaklandı; kod veya parola hatası değildi.
